@@ -2,22 +2,24 @@
 title: "Effect of the car transmission type on the Miles Per Gallon efficiency."
 #date: "23 May 2015"
 output: 
-  pdf_document: 
-    fig_caption: yes
   html_document: 
     fig_caption: yes
     fig_height: 4
+  pdf_document: 
+    fig_caption: yes
 ---
     
 ```{r Init, echo=FALSE, message=FALSE, warning=FALSE}
 data("mtcars")
 require(knitr)
 require(dplyr); require(ggplot2); require(GGally)
+library(devtools)
+library(sjPlot)
 ```
     
 # Overview
 
-Our goal is to analyse the links between the variables of the *mtcars* data set. More specifically, we will try to see if the miles per gallon (*pmg*) efficiency can be predicted by the transmission type (*am*), and if such a link exists, we will try to quantify it. 
+Our goal is to analyse the links between the variables of the *mtcars* data set. More specifically, we will try to see if the miles per gallon (*mpg*) efficiency can be predicted by the transmission type (*am*), and if such a link exists, we will try to quantify it. 
 
 
 # High level view of the data set
@@ -39,7 +41,7 @@ See *Fig 1* in the Appendix for the complete exploratory plot.
 
 # Comparison between transmission type over miles per gallon efficiency
 
-“Is an automatic or manual transmission better for MPG”
+Let's try to answer the “Is an automatic or manual transmission better for MPG?” question.
 A first boxplot to see how *mpg* and *am* are related confirms that the mpg values really differs from. See *Fig 2* in the appendix. Let's try to get a better idea of this relationship by fitting a simple model with *am* as the predictor, and *mpg* as the outcome.
 
 ```{r }
@@ -68,8 +70,7 @@ For each model we will use a single predictor, and measure the confidence level,
 
 
 ```{r Model comparison, echo=FALSE, warning=FALSE, echo=FALSE}
-library(devtools)
-library(sjPlot)
+
 
 dat <- mtcars %>% mutate(am=factor(am), cyl=factor(cyl), gear=factor(gear))
 fit <- lm(data = dat, mpg ~ am-1)
@@ -133,4 +134,4 @@ ggQQ(fit1, title = "QQ plot of the residuals for the linear regression mpg~am-1"
 ```
 
 
-(R markdown exported to html to keep the `sjt.lm` model comparison table, then saved to HTML)
+R markdown exported to html to keep the `sjt.lm` model comparison table, then saved to HTML. All the sources of the R Markdown file are available on the [dedicated Github repo](https://github.com/sportebois/coursera-reggressionModels-project/blob/master/mpg-analysis.Rmd)
