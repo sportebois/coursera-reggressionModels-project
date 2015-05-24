@@ -1,0 +1,136 @@
+---
+title: "Effect of the car transmission type on the Miles Per Gallon efficiency."
+#date: "23 May 2015"
+output: 
+  pdf_document: 
+    fig_caption: yes
+  html_document: 
+    fig_caption: yes
+    fig_height: 4
+---
+    
+```{r Init, echo=FALSE, message=FALSE, warning=FALSE}
+data("mtcars")
+require(knitr)
+require(dplyr); require(ggplot2); require(GGally)
+```
+    
+# Overview
+
+Our goal is to analyse the links between the variables of the *mtcars* data set. More specifically, we will try to see if the miles per gallon (*pmg*) efficiency can be predicted by the transmission type (*am*), and if such a link exists, we will try to quantify it. 
+
+
+# High level view of the data set
+
+Before trying to get details about specific interaction from the transmission type over the miles per gallon efficiency, we will start by having a high level view of all the variables and their overall correlation.
+
+In order to do so, we will use the very nice `ggpairs` method from the [`GGally` package](https://github.com/ggobi/ggally). 
+
+The variable we are particulary interested in are *am* - the transmission type - and *mpg* - the miles per gallon measure - so we will lok at these two ones if one first exploratory question in mind: *what other variables have high correlation values, and how to they qualify against am and mgp?*. 
+We can see in this correlation plot that indeed the transmission type and the mpg seems correclated. 
+But we also see that lots of other variables have quite high correlation values: 
+
+- *disp*, the displacement of the car (in cu.in) has a correlation value of -0.85 with *mpg*.
+- *wt*, the weight of  the car has a correlation value of -0.87.
+- *cyl*, the number of cylinders of the car also seems to have a very strong correlation (the value is not displayed on this plot).
+See *Fig 1* in the Appendix for the complete exploratory plot.
+
+
+
+# Comparison between transmission type over miles per gallon efficiency
+
+“Is an automatic or manual transmission better for MPG”
+A first boxplot to see how *mpg* and *am* are related confirms that the mpg values really differs from. See *Fig 2* in the appendix. Let's try to get a better idea of this relationship by fitting a simple model with *am* as the predictor, and *mpg* as the outcome.
+
+```{r }
+fit1 <- lm(data = mtcars, mpg ~ I(factor(am)))
+kable(summary(fit1)$coef, digits = c(2,2,2,15))
+```
+
+These P-Values are extremely small and at first glance we culd reject the null hypothesis and think that the transmission type, *am*, would be a good predictor for the miles per gallon efficiency. In the next section we will try to give more details and quantify this model.
+
+This also give us a first answer. With a high level of confidence (because of the nice p-values), the variation of intercept for a predicted *mpg* is of 7.24 miles per gallon, between the two transmission types *am*.
+
+
+# Quantification of the transmission type effect on the miles per gallon outcome
+
+In order to evaluate our first model, we can start by checking the standardinzed residuals and display them in a QQ plot. *Fig 3* (see Appendix) is this Q-Q plot. So far, our model looks good enough. 
+```{r Model 1 residuals measures using df beta, echo=FALSE}
+dfbetas(fit1) %>% summary %>% kable(digits=3)
+```
+
+As we can see in this *df betas* summary, all values are quite low. We could be quite confident that this model is not very influenced by some outlier. 
+
+
+
+Our first exploration shown us that other variables might be as good - if not better - predictors for the mpg outcome. We will fit this model and compare them against the previous single am model. 
+For each model we will use a single predictor, and measure the confidence level, the p-value, and the residuals via the adjusted $R^2$. The closest the value of $R^2$ is to 1, the better the model fits the variance. 
+
+
+```{r Model comparison, echo=FALSE, warning=FALSE, echo=FALSE}
+library(devtools)
+library(sjPlot)
+
+dat <- mtcars %>% mutate(am=factor(am), cyl=factor(cyl), gear=factor(gear))
+fit <- lm(data = dat, mpg ~ am-1)
+fitCyl <- lm(data = dat, mpg ~ cyl-1)
+fitGear <- lm(data = dat, mpg ~ gear-1)
+fitDisp <- lm(data = dat, mpg ~ disp-1)
+```
+`r sjt.lm(fit, fitCyl, fitGear, fitDisp, 
+    group.pred = FALSE, 
+    stringCI = "Conf. Int.",
+    stringP = "p-value", 
+    stringDependentVariables = "Response", 
+    stringPredictors = "Coefficients", 
+    labelDependentVariables = c("am", "cyl", "gear", "disp"), 
+    showHeaderStrings = TRUE, showStdBeta=TRUE, showEst = FALSE, showFStat = TRUE,
+    no.output = TRUE)$knitr`
+
+We can see that, although the *am* fitted model does a good job (nice p-value, 0.945 adjuted $R^2$), other model could perform as good, and even better. The cylinder fitted model in particular looks better.
+
+# Conclusion
+
+We have seen that the transmssion type is a nice - but not the best - predictor for the mpg outcome. We also manage to quantify the mpg change when the transmission type changes, and we did some residuals measurements to get some confidence with our fitted models. That said, transmission type seems to be only one of the various predictors of the mpg outcome, and a better model could probably by found in another (longer than this 2 pages) analysis to compare the predictor combinations and end with better results.
+ 
+***
+# Appendix 
+
+
+```{r Chunk 1 Code for high level correlation views,echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.cap='Fig 1, mtcars variables correlation plot', fig.width=10, fig.height=10}
+data("mtcars")
+require(dplyr); require(ggplot2); require(GGally)
+dat <- mtcars %>% mutate(am=factor(am), cyl=factor(cyl), gear=factor(gear))
+ggpairs(dat, colour=dat$am, alpha=0.4, title = 'Fig 1, mtcars variables correlation plot')
+```
+
+```{r  Figure 2 mpg distributed by am,echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.cap='Fig 2, mpg distributed by am'}
+ggplot(mtcars, aes(x=am, y=mpg)) + geom_boxplot(aes(fill=factor(am))) + ggtitle('Fig 2, mpg values distributed by am')
+```
+
+
+```{r Figure 3, QQ plot of the residuals for the linear regression mpg~am-1 , echo=FALSE, fig.cap='Fig 3, QQ plot of the residuals for the linear regression mpg~am-1'}
+ggQQ <- function(lm, title="Normal Q-Q") {
+    # extract standardized residuals from the fit
+    d <- data.frame(std.resid = rstandard(lm))
+    # calculate 1Q/4Q line
+    y <- quantile(d$std.resid[!is.na(d$std.resid)], c(0.25, 0.75))
+    x <- qnorm(c(0.25, 0.75))
+    slope <- diff(y) / diff(x)
+    int <- y[1L] - slope * x[1L]
+    
+    p <- ggplot(data=d, aes(sample=std.resid)) +
+        stat_qq(shape=1, size=3, fill="salmon") + # open circles
+        labs(title=title,             # plot title
+             x="Theoretical Quantiles",      # x-axis label
+             y="Standardized Residuals") +   # y-axis label
+        geom_abline(slope = slope, intercept = int, linetype="dashed")  # dashed reference line
+    return(p)
+}
+fit1 <- lm(data = mtcars, mpg ~ I(factor(am)) -1)
+ggQQ(fit1, title = "QQ plot of the residuals for the linear regression mpg~am-1" )
+
+```
+
+
+(R markdown exported to html to keep the `sjt.lm` model comparison table, then saved to HTML)
